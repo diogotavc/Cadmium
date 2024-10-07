@@ -1,73 +1,89 @@
+# Cadmium, A Linux ~~distro~~ installer for some RISC laptops
+
 <p align="center"><img src="/pics/logo/cd_smol.png" alt="Logo" data-canonical-src="/pics/cd_smol.png"/></p>
 
 Thanks @LoganMD for the logo
 
-# Cadmium, A Linux ~~distro~~ installer for some RISC laptops
+## Pre-requisites
 
-## Hardware support:
-- (FW) entries are meant to indicate that firmware(that is included in Cadmium) is needed for piece of hardware to work correctly.
-- "Y" means "Is known to work as of last time it was tested"
-- "N" means "Is known to not work as of last time it was tested"
-- "?" means "Not tested/Unknown"
-- "P" means "Partial/Incomplete support, refer to notes"
-- "N/A" means "Missing hardware"
+### User
 
-| Feature      | RK3288 | MT8173 | MT8183 | SC7180 | X1 Elite |
-| ------------ | ------ | ------ | ------ | ------ | -------- |
-| Display      | Y      | Y      | Y      | Y      | Y        |
-| OpenGL       | Y      | N      | 3.1    | Y      | 4.6      |
-| Vulkan       | N      | N      | N      | Y      | 1.3.211  |
-| Video decode | ?      | ?      | ?      | ?      | N        |
-| USB Host     | Y      | Y      | Y      | Y      | Y        |
-| USB Device   | N      | N      | N      | N      | ?        |
-| KVM          | Y      | Y      | Y      | Y      | N        |
-| CPUFreq      | Y      | Y      | Y      | Y      | Y        |
+- Patience and time.
+- A working Linux machine.
+- Familiarity with Cadmium's [wiki](<https://github.com/Maccraft123/Cadmium/wiki>).
+- Join Cadmium's [Discord server](<https://discord.gg/ZZbwyvKCmV>).
 
-| Commercial name          | Codename       |  SOC     | Pen input | Internal Installation  | WiFi | Bluetooth | Audio | Suspend/Resume | Notes               |
-| ------------------------ | -------------- | -------- | --------- | ---------------------- | ---- | --------- | ----- | -------------- | ------------------- |
-| Asus Chromebook C100PA   | veyron-minnie  | RK3288   | N/A       | ?                      | ?    | ?         | ?     | Y              |                     |
-| Samsung Chromebook Plus  | gru-kevin      | RK3399   | ?         | ?                      | ?    | ?         | ?     | Y              | Libreboot available |
-| Lenovo Chromebook S330   | elm-hana       | MT8173   | N/A       | ?                      | ?    | ?         | ?     | Y              |                     |
-| Lenovo Chromebook Duet   | kukui-krane    | MT8183   | ?         | Y                      | Y    | ?         | Y     | Y              |                     |
-| Acer Chromebook Spin 513 | trogdor-lazor  | SC7180   | ?         | ?                      | ?    | ?         | ?     | Y              |                     |
-| Lenovo Yoga Slim 7x      | N/A            | X1 Elite | N/A?      | Dual-boot with Windows | Y    | N         | N     | Only manual    | EFI booting         |
+### Linux System
 
-## Official discord server is at https://discord.gg/ZZbwyvKCmV
+**If you plan to compile, ensure your build system meets the following requirements (Debian is recommended, but not mandatory):**
 
-## Installation
-- Make sure that you have developer mode unlocked
-- Enable booting from usb, by running ```enable_dev_usb_boot``` in ChromeOS root shell accessible when you log in as root after pressing ctrl + alt + refresh.
-- Reboot
-Once you have this out, continue with instructions:
+- A working LLVM toolchain.
+- Build dependencies for kernel compilation.
+- `debootstrap` (if using a Debian root filesystem).
+- `qemu-user-static` with binfmt support (for cross-architecture builds).
+- Firmware-specific packages:
+  - For Chromebook machines with stock boot firmware: `vboot-utils`, `u-boot-tools` (includes `vbutil_kernel`, `futility`, `cgpt`, and `mkimage`).
+  - For EFI machines: `ukify` (usually included in `systemd-boot` or a related package).
+- `bc` for calculating the number of threads for compilation.
+- `curl` for downloading the kernel.
+- `bsdtar` for writing archive files (from the `libarchive-tools` package).
+- `f2fs-tools` for creating the filesystem used by Cadmium.
+- `parted` for preparing the GPT table to be modified by `cgpt`.
+- `rsync` for copying files.
 
-- *Edit ./config to reflect your board*
-- ``` ./build-all /dev/sdX ``` On a Linux machine(ChromeOS doesn't count(except in linux chroot)). For Debian rootfs, binfmt and debootstrap are needed to work correctly.
-- When ```build-all``` is ran like ```./build-all <file> <size>```, it builds Cadmium to <file> with size of <size>(8G should be fine)
-- Enable developer mode
-- Plug pendrive into your laptop.
-- Boot from USB
-- After running ``` ./install``` after connecting to internet, Cadmium will be installed on internal emmc memory
-- To update kernel on eMMC memory run: ```./install-kernel``` from pendrive
+*To check if your build system meets the minimum requirements, run `./check`. If the output is empty, you're set!*
 
-### OR
-- Enable developer mode(instructions are in the wiki for krane)
-- Download and uncompress ```cadmium-<device>.tar.gz``` to your pendrive
-- Boot from USB
-- Run ```./install```
+**Alternatively, you can use the available [releases](<https://github.com/Maccraft123/Cadmium/releases>) if they are recent enough.**
 
-#### *Binary drivers are unsupported in Cadmium and never will be*
+- `tar` for extracting the archive.
+- `dd` for flashing the image onto the pendrive.
 
-## Dependencies on build machine, Debian is recommended
-- Recent Linux distribution
-- A working LLVM toolchain
-- Build dependencies for kernel compilation
-- ```debootstrap``` when Debian rootfs is used
-- ```qemu-user-static``` when build machine can't run binaries for the target machine, with binfmt support
-- For Chromebook machines running stock boot firmware: ```vboot-utils u-boot-tools``` (vbutil_kernel or futility, cgpt and mkimage)
-- For EFI machines: ```ukify```, usually provided in ```systemd-boot``` or related package
-- ```bc``` to calculate number of threads to be used for compilation
-- ```curl``` to download the kernel
-- ```bsdtar``` for writing the archive file (from the ```libarchive-tools``` .deb package)
-- ```f2fs-tools``` for creating the filesystem used by Cadmium
-- ```parted``` to prepare gpt table to be modified by cgpt
-- ```rsync```
+### Target Chromebook (Stock Firmware)
+
+1. Enter Developer Mode. Google provides a [guide](<https://www.chromium.org/chromium-os/developer-library/guides/device/developer-mode/#enable-developer-mode>).
+2. Enable booting from USB:
+    - Boot into ChromeOS (guest account is fine).
+    - Access VT-2 (virtual terminal 2) by pressing `ctrl + alt + F2`.
+    - Login to `root` or `chronos` without a password.
+    - Run the following command:
+    ```shell
+    sudo crossystem dev_boot_usb=1 dev_boot_signed_only=0
+    ```
+3. It's also highly recommended you change a few gbb flags to avoid losing your data unexpectedly (more info can be found on [GitHub](<https://github.com/hexdump0815/linux-mainline-on-arm-chromebooks?tab=readme-ov-file#setting-gbb-flags-enabling-ccd-and-the-magic-suzyqable>)).
+4. If you plan to keep ChromeOS, it's recommended to disable the root account and set a password for the user `chronos` using:
+```shell
+chromeos-setdevpasswd
+```
+
+## Compiling
+
+1. Edit `config` to reflect your board.
+2. Run `build-all` on your build system:
+    - To build to a file:
+    ```shell
+    ./build-all <file> <size>  # 8G should be sufficient
+    ```
+    - To build directly onto a pendrive or external drive:
+    ```shell
+    ./build-all /dev/<disk>
+    ```
+
+## Installing
+
+1. Get your pendrive ready, if it isn't already:
+    - Flash the image file you compiled previously.
+    - Alternatively, extract and flash `cadmium-<device>.img.xz` from [releases](<https://github.com/Maccraft123/Cadmium/releases>) to your pendrive.
+2. Shut your target machine down, then boot to USB.
+3. Once booted, run:
+```shell
+./install
+```
+to install Cadmium onto the target storage medium. An internet connection is required.
+
+4. If you're already running Cadmium and wish to update the kernel, simply run:
+```shell
+./install-kernel
+```
+from a pendrive running a newer release.
+
+#### *Note that Binary drivers are unsupported in Cadmium and never will be.*
